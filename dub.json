@@ -1,0 +1,14 @@
+{
+	"authors": [
+		"HuskyNator"
+	],
+	"copyright": "Copyright © 2022, HuskyNator",
+	"description": "Gltf voorbeeld voor HoekjeD",
+	"license": "proprietary",
+	"name": "hoekjed_voorbeeld_gltf",
+	"dependencies": {
+		"hoekjed": {
+			"path": "../HoekjeD"
+		}
+	}
+}
