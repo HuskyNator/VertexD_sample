@@ -14,5 +14,5 @@ hoekjed_voorbeeld_gltf-test-*
 *.obj
 *.lst
 *.gltf
-glfw3.dll
-glfw3dll.lib
+*.dll
+*.lib
