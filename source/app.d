@@ -53,8 +53,7 @@ class Speler : Voorwerp {
 	import std.datetime;
 
 	override void denkStap(Duration deltaT) {
-		verplaatsing.writeln();
-		this.plek = this.plek + verplaatsing * snelheid * deltaT.total!"seconds"();
+		this.plek = this.plek + verplaatsing * snelheid * (deltaT.total!"hnsecs"()/100_);
 		super.denkStap(deltaT);
 	}
 }
