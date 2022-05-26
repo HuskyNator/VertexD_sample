@@ -4,18 +4,20 @@ import hoekjed;
 void main() {
 	hdZetOp();
 	Venster venster = new Venster();
-	GltfLezer lezer = new GltfLezer("blok.gltf");
-	venster.wereld = lezer.hoofd_wereld;
+	GltfLezer lezer = new GltfLezer("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
+	Wereld wereld = lezer.hoofd_wereld;
+	venster.wereld = wereld;
 	Speler speler = new Speler("speler");
 	venster.wereld.kinderen ~= speler;
-	Zicht zicht = new Zicht("zicht", Zicht.perspectiefProjectie(), speler);
+	Zicht zicht = new Zicht(Zicht.perspectiefProjectie());
+	speler.eigenschappen ~= zicht;
 	venster.wereld.zicht = zicht;
 	lezer.voorwerpen[0].plek = Vec!3([0, 0, -5]);
 
 	venster.zetMuissoort(Muissoort.GEVANGEN);
 	venster.toetsTerugroepers ~= &speler.toetsinvoer;
 	venster.muisplekTerugroepers ~= &speler.muisinvoer;
-
+	speler.plek = Vec!3([1, 1, 0]);
 	hdLus();
 }
 
@@ -23,7 +25,7 @@ class Speler : Voorwerp {
 
 	private Vec!3 verplaatsing;
 	private Vec!3 draaiing;
-	nauwkeurigheid snelheid = 1.7;
+	nauwkeurigheid snelheid = 3;
 	nauwkeurigheid draaiSnelheid = 0.6;
 
 	this(string naam) {
@@ -77,7 +79,7 @@ class Speler : Voorwerp {
 		import std.math : abs;
 
 		double deltaSec = deltaT.total!"hnsecs"() / 10_000_000.0;
-		this.plek = plek + verplaatsing * cast(nauwkeurigheid)(snelheid * deltaSec);
+		this.plek = plek + Mat!(3).draaiMy(draai.y).maal(verplaatsing * cast(nauwkeurigheid)(snelheid * deltaSec));
 
 		Vec!3 draaiDelta = draaiing * cast(nauwkeurigheid)(draaiSnelheid * deltaSec);
 		if (abs(draai.x + draaiDelta.x) > 3.14)
