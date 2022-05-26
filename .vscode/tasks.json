@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"command": "dub",
+			"args": [
+				"build",
+				"--compiler=dmd",
+				"-a=x86_64",
+				"-b=debug",
+				"-c=application"
+			],
+			"label": "build"
+		}
+	]
+}

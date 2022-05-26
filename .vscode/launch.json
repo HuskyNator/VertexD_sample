@@ -5,11 +5,16 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"type": "code-d",
+			"name": "(Windows) Launch",
+			"type": "cppvsdbg",
 			"request": "launch",
-			"name": "Debug D project",
-			"cwd": "${workspaceFolder}",
-			"program": "./hoekjed_voorbeeld_gltf.exe",
+			"program": "hoekjed_voorbeeld_gltf",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${cwd}",
+			"environment": [],
+			"console": "integratedTerminal",
+			"preLaunchTask": "build"
 		}
 	]
 }

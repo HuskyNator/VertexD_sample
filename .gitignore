@@ -16,3 +16,5 @@ hoekjed_voorbeeld_gltf-test-*
 *.gltf
 *.dll
 *.lib
+
+bestanden/
