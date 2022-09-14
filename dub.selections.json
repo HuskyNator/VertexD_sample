@@ -4,7 +4,7 @@
 		"bindbc-glfw": "0.10.1",
 		"bindbc-loader": "0.3.2",
 		"bindbc-opengl": "0.13.0",
-		"hoekjed": {"path":"../HoekjeD"},
+		"vertexd": {"path":"../VertexD"},
 		"imageformats": "7.0.2"
 	}
 }

@@ -1,82 +1,149 @@
 import std.stdio;
-import hoekjed;
+import vertexd;
 
 void main() {
-	hdZetOp();
-	Venster venster = new Venster();
-	GltfLezer lezer = new GltfLezer("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
-	Wereld wereld = lezer.hoofd_wereld;
-	venster.wereld = wereld;
+	vdInit();
+	Window window = new Window();
+	// GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/werelden/ParaKubus.gltf");
+	GltfReader lezer = new GltfReader("bestanden/test.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/untitled.gltf");
+	World world = lezer.main_world;
+	window.world = world;
 	Speler speler = new Speler("speler");
-	venster.wereld.kinderen ~= speler;
-	Zicht zicht = new Zicht(Zicht.perspectiefProjectie());
-	speler.eigenschappen ~= zicht;
-	venster.wereld.zicht = zicht;
-	lezer.voorwerpen[0].plek = Vec!3([0, 0, -5]);
+	window.world.children ~= speler;
+	Camera camera = new Camera(Camera.perspectiveProjection());
+	speler.attributes ~= camera;
+	window.world.camera = camera;
+	lezer.nodes[0].location = Vec!3([0, 0, 0]);
 
-	venster.zetMuissoort(Muissoort.GEVANGEN);
-	venster.toetsTerugroepers ~= &speler.toetsinvoer;
-	venster.muisplekTerugroepers ~= &speler.muisinvoer;
-	speler.plek = Vec!3([1, 1, 0]);
-	hdLus();
+	window.setMouseType(MouseType.CAPTURED);
+	window.keyCallbacks ~= &speler.toetsinvoer;
+	window.mousepositionCallbacks ~= &speler.muisinvoer;
+	speler.location = Vec!3([0, 0, 2]);
+	vdLoop();
 }
 
-class Speler : Voorwerp {
+class Speler : Node {
 	private Quat xdraai;
 	private Quat ydraai;
 
 	private Vec!3 _verplaatsing;
 	private Vec!2 _draai;
 	private Vec!2 _draaiDelta;
-	nauwkeurigheid snelheid = 3;
-	nauwkeurigheid draaiSnelheid = 0.6;
+	precision snelheid = 3;
+	precision draaiSnelheid = 0.6;
 
 	this(string naam) {
 		super(naam);
 	}
 
-	void toetsinvoer(ToetsInvoer invoer) nothrow {
-		import bindbc.glfw;
+	bool culling = true;
+	bool normalTexture = true;
+	bool colorTexture = true;
+	bool renderNormals = false;
+	bool absNormals = false;
+	bool renderTangents = false;
+	bool renderUV = false;
 
-		if (invoer.gebeurtenis != GLFW_PRESS && invoer.gebeurtenis != GLFW_RELEASE)
-			return;
+	void toetsinvoer(KeyInput input) nothrow {
+		try {
+			import bindbc.glfw;
+			import bindbc.opengl;
 
-		int delta = (invoer.gebeurtenis == GLFW_PRESS) ? 1 : -1;
-		switch (invoer.toets) {
-		case GLFW_KEY_A:
-			_verplaatsing.x -= delta;
-			break;
-		case GLFW_KEY_D:
-			_verplaatsing.x += delta;
-			break;
-		case GLFW_KEY_SPACE:
-			_verplaatsing.y += delta;
-			break;
-		case GLFW_KEY_LEFT_CONTROL:
-			_verplaatsing.y -= delta;
-			break;
-		case GLFW_KEY_S:
-			_verplaatsing.z -= delta;
-			break;
-		case GLFW_KEY_W:
-			_verplaatsing.z += delta;
-			break;
-		default:
+			if (input.event != GLFW_PRESS && input.event != GLFW_RELEASE)
+				return;
+
+			int delta = (input.event == GLFW_PRESS) ? 1 : -1;
+			switch (input.key) {
+				case GLFW_KEY_A:
+					_verplaatsing.x -= delta;
+					break;
+				case GLFW_KEY_D:
+					_verplaatsing.x += delta;
+					break;
+				case GLFW_KEY_SPACE:
+					_verplaatsing.y += delta;
+					break;
+				case GLFW_KEY_LEFT_CONTROL:
+					_verplaatsing.y -= delta;
+					break;
+				case GLFW_KEY_S:
+					_verplaatsing.z -= delta;
+					break;
+				case GLFW_KEY_W:
+					_verplaatsing.z += delta;
+					break;
+				case GLFW_KEY_1:
+					if (input.event != GLFW_PRESS)
+						break;
+					if (culling)
+						glDisable(GL_CULL_FACE);
+					else
+						glEnable(GL_CULL_FACE);
+					culling = !culling;
+					writeln("Culling: " ~ (culling ? "on" : "off"));
+					break;
+				case GLFW_KEY_2:
+					if (input.event != GLFW_PRESS)
+						break;
+					normalTexture = !normalTexture;
+					Shader.standardShader.setUniform("u_useNormalTexture", cast(uint) normalTexture);
+					writeln("Normal Texture: " ~ (normalTexture ? "on" : "off"));
+					break;
+				case GLFW_KEY_3:
+					if (input.event != GLFW_PRESS)
+						break;
+					colorTexture = !colorTexture;
+					Shader.standardShader.setUniform("u_useColorTexture", cast(uint) colorTexture);
+					writeln("Color Texture: " ~ (colorTexture ? "on" : "off"));
+					break;
+				case GLFW_KEY_4:
+					if (input.event != GLFW_PRESS)
+						break;
+					renderNormals = !renderNormals;
+					Shader.standardShader.setUniform("u_renderNormals", cast(uint) renderNormals);
+					writeln("Render Normals: " ~ (renderNormals ? "on" : "off"));
+					break;
+				case GLFW_KEY_5:
+					if (input.event != GLFW_PRESS)
+						break;
+					absNormals = !absNormals;
+					Shader.standardShader.setUniform("u_absNormals", cast(uint) absNormals);
+					writeln("Render Absolute Normals: " ~ (absNormals ? "on" : "off"));
+					break;
+				case GLFW_KEY_6:
+					if (input.event != GLFW_PRESS)
+						break;
+					renderTangents = !renderTangents;
+					Shader.standardShader.setUniform("u_renderTangents", cast(uint) renderTangents);
+					writeln("Render Tangents: " ~ (renderTangents ? "on" : "off"));
+					break;
+				case GLFW_KEY_7:
+					if (input.event != GLFW_PRESS)
+						break;
+					renderUV = !renderUV;
+					Shader.standardShader.setUniform("u_renderUV", cast(uint) renderUV);
+					writeln("Render UV: " ~ (renderUV ? "on" : "off"));
+					break;
+				default:
+			}
+		} catch (Exception e) {
 		}
 	}
 
-	void muisinvoer(MuisplekInvoer invoer) nothrow {
+	void muisinvoer(MousepositionInput input) nothrow {
 		static double oude_x = 0;
 		static double oude_y = 0;
-		_draaiDelta.y -= invoer.x - oude_x;
-		_draaiDelta.x -= invoer.y - oude_y;
-		oude_x = invoer.x;
-		oude_y = invoer.y;
+		_draaiDelta.y -= input.x - oude_x;
+		_draaiDelta.x -= input.y - oude_y;
+		oude_x = input.x;
+		oude_y = input.y;
 	}
 
 	import std.datetime;
 
-	override void denkStap(Duration deltaT) {
+	override void logicStep(Duration deltaT) {
 		import std.math;
 
 		double deltaSec = deltaT.total!"hnsecs"() / 10_000_000.0;
@@ -85,26 +152,25 @@ class Speler : Voorwerp {
 		Vec!3 rechts = ydraai * Vec!3([1, 0, 0]);
 
 		Mat!3 verplaatsMat;
-		verplaatsMat.zetKol(0, rechts);
-		verplaatsMat.zetKol(1, Vec!3([0, 1, 0]));
-		verplaatsMat.zetKol(2, vooruit);
+		verplaatsMat.setCol(0, rechts);
+		verplaatsMat.setCol(1, Vec!3([0, 1, 0]));
+		verplaatsMat.setCol(2, vooruit);
 
-		this.plek = this.plek + cast(Vec!3)(
-			verplaatsMat ^ (_verplaatsing * cast(nauw)(snelheid * deltaSec)));
+		this.location = this.location + cast(Vec!3)(verplaatsMat ^ (_verplaatsing * cast(prec)(snelheid * deltaSec)));
 
-		_draaiDelta = _draaiDelta * cast(nauw)(draaiSnelheid * deltaSec);
+		_draaiDelta = _draaiDelta * cast(prec)(draaiSnelheid * deltaSec);
 		_draai = _draai + _draaiDelta;
 		if (abs(_draai.x) > PI_2)
 			_draai.x = sgn(_draai.x) * PI_2;
 		if (abs(_draai.y) > PI)
 			_draai.y -= sgn(_draai.y) * 2 * PI;
 
-		xdraai = Quat.draai(Vec!3([1, 0, 0]), _draai.x);
-		ydraai = Quat.draai(Vec!3([0, 1, 0]), _draai.y);
-		this.draai = ydraai * xdraai;
+		xdraai = Quat.rotation(Vec!3([1, 0, 0]), _draai.x);
+		ydraai = Quat.rotation(Vec!3([0, 1, 0]), _draai.y);
+		this.rotation = ydraai * xdraai;
 
 		_draaiDelta = Vec!2(0);
 
-		super.denkStap(deltaT);
+		super.logicStep(deltaT);
 	}
 }

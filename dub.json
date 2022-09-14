@@ -7,8 +7,8 @@
 	"license": "proprietary",
 	"name": "hoekjed_voorbeeld_gltf",
 	"dependencies": {
-		"hoekjed": {
-			"path": "../HoekjeD"
+		"vertexd": {
+			"path": "../VertexD"
 		}
 	}
 }
