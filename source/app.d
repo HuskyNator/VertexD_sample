@@ -6,8 +6,9 @@ void main() {
 	Window window = new Window();
 	// GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
 	// GltfReader lezer = new GltfReader("bestanden/werelden/ParaKubus.gltf");
-	GltfReader lezer = new GltfReader("bestanden/test.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/untitled.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/test.gltf");
+	GltfReader lezer = new GltfReader("bestanden/werelden/floor-split-tangents.gltf");
+	// // GltfReader lezer = new GltfReader("bestanden/untitled.gltf");
 	World world = lezer.main_world;
 	window.world = world;
 	Speler speler = new Speler("speler");
@@ -15,12 +16,47 @@ void main() {
 	Camera camera = new Camera(Camera.perspectiveProjection());
 	speler.attributes ~= camera;
 	window.world.camera = camera;
-	lezer.nodes[0].location = Vec!3([0, 0, 0]);
+	// lezer.nodes[0].location = Vec!3([0, 0, 0]);
 
 	window.setMouseType(MouseType.CAPTURED);
 	window.keyCallbacks ~= &speler.toetsinvoer;
 	window.mousepositionCallbacks ~= &speler.muisinvoer;
 	speler.location = Vec!3([0, 0, 2]);
+
+	world.update(); // update all locations
+
+	// tangent debugging
+	foreach (Node n_; world.children) {
+		void doNode(Node n) {
+			foreach (Mesh m_; n.meshes) {
+				if (GltfMesh m = cast(GltfMesh) m_) {
+					float[3][] correctTangents;
+					float[3][] generatedTangents;
+					Vec!4[] ts = cast(Vec!4[]) m.attributeSet.tangent.getContent();
+					Vec!4[] tgens = cast(Vec!4[]) Mesh.generateTangents(m.attributeSet.position,
+						m.attributeSet.normal,
+						m.attributeSet.texCoord[m.material.normal_texture.texCoord], m.indexAttribute).getContent();
+					foreach (Vec!4 t; ts) {
+						correctTangents ~= [t[0], t[1], t[2]]; // moeten er twee zijn?
+					}
+					foreach (Vec!4 tgen; tgens) {
+						generatedTangents ~= [tgen[0], tgen[1], tgen[2]];
+					}
+					Lines correctLines = new Lines(correctTangents, [[1, 0, 0, 1]]);
+					Lines generatedLines = new Lines(correctTangents, [[0, 0, 1, 1]]);
+					n.meshes ~= correctLines;
+					n.meshes ~= generatedLines;
+				}
+			}
+			foreach (Node child; n.children) {
+				doNode(child);
+			}
+		}
+
+		doNode(n_);
+	}
+	Triangles.setWireframe(true);
+
 	vdLoop();
 }
 
@@ -35,7 +71,7 @@ class Speler : Node {
 	precision draaiSnelheid = 0.6;
 
 	this(string naam) {
-		super(naam);
+		super([], naam);
 	}
 
 	bool culling = true;
@@ -88,42 +124,42 @@ class Speler : Node {
 					if (input.event != GLFW_PRESS)
 						break;
 					normalTexture = !normalTexture;
-					Shader.standardShader.setUniform("u_useNormalTexture", cast(uint) normalTexture);
+					Shader.gltfShader.setUniform("u_useNormalTexture", cast(uint) normalTexture);
 					writeln("Normal Texture: " ~ (normalTexture ? "on" : "off"));
 					break;
 				case GLFW_KEY_3:
 					if (input.event != GLFW_PRESS)
 						break;
 					colorTexture = !colorTexture;
-					Shader.standardShader.setUniform("u_useColorTexture", cast(uint) colorTexture);
+					Shader.gltfShader.setUniform("u_useColorTexture", cast(uint) colorTexture);
 					writeln("Color Texture: " ~ (colorTexture ? "on" : "off"));
 					break;
 				case GLFW_KEY_4:
 					if (input.event != GLFW_PRESS)
 						break;
 					renderNormals = !renderNormals;
-					Shader.standardShader.setUniform("u_renderNormals", cast(uint) renderNormals);
+					Shader.gltfShader.setUniform("u_renderNormals", cast(uint) renderNormals);
 					writeln("Render Normals: " ~ (renderNormals ? "on" : "off"));
 					break;
 				case GLFW_KEY_5:
 					if (input.event != GLFW_PRESS)
 						break;
 					absNormals = !absNormals;
-					Shader.standardShader.setUniform("u_absNormals", cast(uint) absNormals);
+					Shader.gltfShader.setUniform("u_absNormals", cast(uint) absNormals);
 					writeln("Render Absolute Normals: " ~ (absNormals ? "on" : "off"));
 					break;
 				case GLFW_KEY_6:
 					if (input.event != GLFW_PRESS)
 						break;
 					renderTangents = !renderTangents;
-					Shader.standardShader.setUniform("u_renderTangents", cast(uint) renderTangents);
+					Shader.gltfShader.setUniform("u_renderTangents", cast(uint) renderTangents);
 					writeln("Render Tangents: " ~ (renderTangents ? "on" : "off"));
 					break;
 				case GLFW_KEY_7:
 					if (input.event != GLFW_PRESS)
 						break;
 					renderUV = !renderUV;
-					Shader.standardShader.setUniform("u_renderUV", cast(uint) renderUV);
+					Shader.gltfShader.setUniform("u_renderUV", cast(uint) renderUV);
 					writeln("Render UV: " ~ (renderUV ? "on" : "off"));
 					break;
 				default:
