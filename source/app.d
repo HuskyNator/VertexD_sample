@@ -1,66 +1,59 @@
 import std.stdio;
 import vertexd;
 
+import imageformats;
+
 void main() {
 	vdInit();
 	Window window = new Window();
-	// GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/werelden/ParaKubus.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/test.gltf");
-	GltfReader lezer = new GltfReader("bestanden/werelden/floor-split-tangents.gltf");
-	// // GltfReader lezer = new GltfReader("bestanden/untitled.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/NormalTangentTest/blender/normaltest..gltf");
+	// GltfReader lezer = new GltfReader("bestanden/NormalTangentTest/glTF/NormalTangentTest.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/NormalTangentTest/blender/NormalTangentTest.gltf");
+	GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/DamagedHelmet.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/schaaltje_steen.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/rekenmachine2.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/fox/Cameras.gltf");
+	// GltfReader lezer = new GltfReader("bestanden/werelden/kleur.gltf");
+
+	// Mesh m = lezer.meshes[0][0];
+	// new File("blender", "wb").write(m.attributes[0].getContent);
+
+	// GltfReader lezer2 = new GltfReader("bestanden/NormalTangentTest/gltf/NormalTangentTest.gltf");
+	// Mesh m2 = lezer2.meshes[0][0];
+	// new File("normal", "wb").write(m2.attributes[0].getContent);
+
 	World world = lezer.main_world;
 	window.world = world;
 	Speler speler = new Speler("speler");
-	window.world.children ~= speler;
-	Camera camera = new Camera(Camera.perspectiveProjection());
-	speler.attributes ~= camera;
-	window.world.camera = camera;
-	// lezer.nodes[0].location = Vec!3([0, 0, 0]);
+	world.addNode(speler);
+	// window.world.addNode(speler);
+	// Camera camera = new Camera(Camera.perspectiveProjection());
+	// speler.addAttribute(new Light(Light.Type.FRAGMENT, Vec!3([1,1,1])));
+	// world.currentCamera=camera;
+
+	Camera camera = world.getCurrentCamera();
+	// Node owner = camera.owner;
+	// owner.removeAttribute(camera);
+	// owner.addChild(speler);
+	// speler.addAttribute(camera);
 
 	window.setMouseType(MouseType.CAPTURED);
 	window.keyCallbacks ~= &speler.toetsinvoer;
-	window.mousepositionCallbacks ~= &speler.muisinvoer;
+	// window.mousepositionCallbacks ~= &speler.muisinvoer;
 	speler.location = Vec!3([0, 0, 2]);
 
-	world.update(); // update all locations
-
-	// tangent debugging
-	foreach (Node n_; world.children) {
-		void doNode(Node n) {
-			foreach (Mesh m_; n.meshes) {
-				if (GltfMesh m = cast(GltfMesh) m_) {
-					float[3][] correctTangents;
-					float[3][] generatedTangents;
-					Vec!4[] ts = cast(Vec!4[]) m.attributeSet.tangent.getContent();
-					Vec!4[] tgens = cast(Vec!4[]) Mesh.generateTangents(m.attributeSet.position,
-						m.attributeSet.normal,
-						m.attributeSet.texCoord[m.material.normal_texture.texCoord], m.indexAttribute).getContent();
-					foreach (Vec!4 t; ts) {
-						correctTangents ~= [t[0], t[1], t[2]]; // moeten er twee zijn?
-					}
-					foreach (Vec!4 tgen; tgens) {
-						generatedTangents ~= [tgen[0], tgen[1], tgen[2]];
-					}
-					Lines correctLines = new Lines(correctTangents, [[1, 0, 0, 1]]);
-					Lines generatedLines = new Lines(correctTangents, [[0, 0, 1, 1]]);
-					n.meshes ~= correctLines;
-					n.meshes ~= generatedLines;
-				}
-			}
-			foreach (Node child; n.children) {
-				doNode(child);
-			}
-		}
-
-		doNode(n_);
-	}
-	Triangles.setWireframe(true);
+	// Lines line = new Lines([[0, 0, 0], [1, 0, 0], [0, 0, 0], [0, 1, 0], [0, 0, 0], [0, 0, 1]], [
+	// 		[1, 0, 0, 1], [1, 0, 0, 1], [0, 1, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1], [0, 0, 1, 1]
+	// 	]);
+	// Lines line2 = new Lines([[0, 0, 0], [1, 1, 1]], [[1, 1, 0, 1]]);
+	// world.roots[0].meshes ~= line;
+	// world.roots[0].meshes ~= line2;
 
 	vdLoop();
 }
 
-class Speler : Node {
+class Speler : Node { // TODO: add switching camera
 	private Quat xdraai;
 	private Quat ydraai;
 
@@ -70,8 +63,9 @@ class Speler : Node {
 	precision snelheid = 3;
 	precision draaiSnelheid = 0.6;
 
-	this(string naam) {
-		super([], naam);
+	this(string name) {
+		super();
+		this.name = name;
 	}
 
 	bool culling = true;
@@ -81,6 +75,8 @@ class Speler : Node {
 	bool absNormals = false;
 	bool renderTangents = false;
 	bool renderUV = false;
+
+	uint cam = 0;
 
 	void toetsinvoer(KeyInput input) nothrow {
 		try {
@@ -161,6 +157,18 @@ class Speler : Node {
 					renderUV = !renderUV;
 					Shader.gltfShader.setUniform("u_renderUV", cast(uint) renderUV);
 					writeln("Render UV: " ~ (renderUV ? "on" : "off"));
+					break;
+				case GLFW_KEY_RIGHT:
+					World world = worlds[0];
+					if (cam < world.cameras.length - 1)
+						cam += 1;
+					world.currentCamera = world.cameras[cam];
+					break;
+				case GLFW_KEY_LEFT:
+					World world = worlds[0];
+					if (cam > 0)
+						cam -= 1;
+					world.currentCamera = world.cameras[cam];
 					break;
 				default:
 			}
