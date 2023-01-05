@@ -1,56 +1,53 @@
+import std.conv : to;
+import std.datetime;
+import std.datetime.stopwatch;
 import std.stdio;
 import vertexd;
-
-import imageformats;
+import bindbc.opengl;
 
 void main() {
+	File log = File("log.txt", "a");
+	debug log.write("(Debug) ");
+	log.writeln("Run @: " ~ Clock.currTime.toSimpleString);
+
 	vdInit();
 	Window window = new Window();
-	// GltfReader lezer = new GltfReader("bestanden/NormalTangentTest/blender/normaltest..gltf");
-	// GltfReader lezer = new GltfReader("bestanden/NormalTangentTest/glTF/NormalTangentTest.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/NormalTangentTest/blender/NormalTangentTest.gltf");
-	GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/DamagedHelmet.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/schaaltje_steen.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/rekenmachine2.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/fox/Cameras.gltf");
-	// GltfReader lezer = new GltfReader("bestanden/werelden/kleur.gltf");
 
-	// Mesh m = lezer.meshes[0][0];
-	// new File("blender", "wb").write(m.attributes[0].getContent);
+	// StopWatch sw = StopWatch(AutoStart.yes);
+	// GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
+	// sw.stop();
+	// sw.peek.total!"msecs".writeln;
+	// log.writeln("Gltf Setup: " ~ sw.peek.toString);
 
-	// GltfReader lezer2 = new GltfReader("bestanden/NormalTangentTest/gltf/NormalTangentTest.gltf");
-	// Mesh m2 = lezer2.meshes[0][0];
-	// new File("normal", "wb").write(m2.attributes[0].getContent);
-
-	World world = lezer.main_world;
+	GltfReader reader = new GltfReader("bestanden/DamagedHelmet.gltf");
+	World world = reader.main_world;
 	window.world = world;
+
 	Speler speler = new Speler("speler");
 	world.addNode(speler);
-	// window.world.addNode(speler);
-	// Camera camera = new Camera(Camera.perspectiveProjection());
-	// speler.addAttribute(new Light(Light.Type.FRAGMENT, Vec!3([1,1,1])));
-	// world.currentCamera=camera;
 
-	Camera camera = world.getCurrentCamera();
-	// Node owner = camera.owner;
-	// owner.removeAttribute(camera);
-	// owner.addChild(speler);
-	// speler.addAttribute(camera);
+	Camera camera = new Camera(Camera.perspectiveProjection());
+	speler.addAttribute(new Light(Light.Type.FRAGMENT, Vec!3([1, 1, 1])));
+	speler.addAttribute(camera);
+	world.currentCamera = camera;
 
 	window.setMouseType(MouseType.CAPTURED);
 	window.keyCallbacks ~= &speler.toetsinvoer;
-	// window.mousepositionCallbacks ~= &speler.muisinvoer;
+	window.mousepositionCallbacks ~= &speler.muisinvoer;
 	speler.location = Vec!3([0, 0, 2]);
 
-	// Lines line = new Lines([[0, 0, 0], [1, 0, 0], [0, 0, 0], [0, 1, 0], [0, 0, 0], [0, 0, 1]], [
-	// 		[1, 0, 0, 1], [1, 0, 0, 1], [0, 1, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1], [0, 0, 1, 1]
-	// 	]);
-	// Lines line2 = new Lines([[0, 0, 0], [1, 1, 1]], [[1, 1, 0, 1]]);
-	// world.roots[0].meshes ~= line;
-	// world.roots[0].meshes ~= line2;
+	ShaderProgram.gltfShaderProgram.setUniform("u_useNormalTexture", cast(uint) true);
+	ShaderProgram.gltfShaderProgram.setUniform("u_useColorTexture", cast(uint) true);
+
+	vdStep();
+	vdStep(); // Dont want to register initialization time
+	// log.writeln("Average FPS (60 frames): " ~ vdDeltaTime().total!"msecs".to!string);
+	vdDeltaTime().total!"usecs"
+		.to!string
+		.writeln;
 
 	vdLoop();
+	// vdDeInit();
 }
 
 class Speler : Node { // TODO: add switching camera
@@ -120,51 +117,55 @@ class Speler : Node { // TODO: add switching camera
 					if (input.event != GLFW_PRESS)
 						break;
 					normalTexture = !normalTexture;
-					Shader.gltfShader.setUniform("u_useNormalTexture", cast(uint) normalTexture);
+					ShaderProgram.gltfShaderProgram.setUniform("u_useNormalTexture", cast(uint) normalTexture);
 					writeln("Normal Texture: " ~ (normalTexture ? "on" : "off"));
 					break;
 				case GLFW_KEY_3:
 					if (input.event != GLFW_PRESS)
 						break;
 					colorTexture = !colorTexture;
-					Shader.gltfShader.setUniform("u_useColorTexture", cast(uint) colorTexture);
+					ShaderProgram.gltfShaderProgram.setUniform("u_useColorTexture", cast(uint) colorTexture);
 					writeln("Color Texture: " ~ (colorTexture ? "on" : "off"));
 					break;
 				case GLFW_KEY_4:
 					if (input.event != GLFW_PRESS)
 						break;
 					renderNormals = !renderNormals;
-					Shader.gltfShader.setUniform("u_renderNormals", cast(uint) renderNormals);
+					ShaderProgram.gltfShaderProgram.setUniform("u_renderNormals", cast(uint) renderNormals);
 					writeln("Render Normals: " ~ (renderNormals ? "on" : "off"));
 					break;
 				case GLFW_KEY_5:
 					if (input.event != GLFW_PRESS)
 						break;
 					absNormals = !absNormals;
-					Shader.gltfShader.setUniform("u_absNormals", cast(uint) absNormals);
+					ShaderProgram.gltfShaderProgram.setUniform("u_absNormals", cast(uint) absNormals);
 					writeln("Render Absolute Normals: " ~ (absNormals ? "on" : "off"));
 					break;
 				case GLFW_KEY_6:
 					if (input.event != GLFW_PRESS)
 						break;
 					renderTangents = !renderTangents;
-					Shader.gltfShader.setUniform("u_renderTangents", cast(uint) renderTangents);
+					ShaderProgram.gltfShaderProgram.setUniform("u_renderTangents", cast(uint) renderTangents);
 					writeln("Render Tangents: " ~ (renderTangents ? "on" : "off"));
 					break;
 				case GLFW_KEY_7:
 					if (input.event != GLFW_PRESS)
 						break;
 					renderUV = !renderUV;
-					Shader.gltfShader.setUniform("u_renderUV", cast(uint) renderUV);
+					ShaderProgram.gltfShaderProgram.setUniform("u_renderUV", cast(uint) renderUV);
 					writeln("Render UV: " ~ (renderUV ? "on" : "off"));
 					break;
 				case GLFW_KEY_RIGHT:
+					if (input.event != GLFW_RELEASE)
+						break;
 					World world = worlds[0];
 					if (cam < world.cameras.length - 1)
 						cam += 1;
 					world.currentCamera = world.cameras[cam];
 					break;
 				case GLFW_KEY_LEFT:
+					if (input.event != GLFW_RELEASE)
+						break;
 					World world = worlds[0];
 					if (cam > 0)
 						cam -= 1;
