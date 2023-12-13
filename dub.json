@@ -5,7 +5,7 @@
 	"copyright": "Copyright © 2022, HuskyNator",
 	"description": "Gltf voorbeeld voor HoekjeD",
 	"license": "proprietary",
-	"name": "hoekjed_voorbeeld_gltf",
+	"name": "vertexd_sample",
 	"dependencies": {
 		"vertexd": {
 			"path": "../VertexD"

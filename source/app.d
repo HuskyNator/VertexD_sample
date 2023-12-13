@@ -6,9 +6,9 @@ import vertexd;
 import bindbc.opengl;
 
 void main() {
-	File log = File("log.txt", "a");
-	debug log.write("(Debug) ");
-	log.writeln("Run @: " ~ Clock.currTime.toSimpleString);
+	// File log = File("log.txt", "a");
+	// debug log.write("(Debug) ");
+	// log.writeln("Run @: " ~ Clock.currTime.toSimpleString);
 
 	vdInit();
 	Window window = new Window();
@@ -19,7 +19,7 @@ void main() {
 	// sw.peek.total!"msecs".writeln;
 	// log.writeln("Gltf Setup: " ~ sw.peek.toString);
 
-	GltfReader reader = new GltfReader("bestanden/DamagedHelmet.gltf");
+	GltfReader reader = new GltfReader("DamagedHelmet/DamagedHelmet.gltf");
 	World world = reader.main_world;
 	window.world = world;
 
@@ -27,14 +27,14 @@ void main() {
 	world.addNode(speler);
 
 	Camera camera = new Camera(Camera.perspectiveProjection());
-	speler.addAttribute(new Light(Light.Type.FRAGMENT, Vec!3([1, 1, 1])));
+	speler.addAttribute(new Light(Light.Type.POINT, Vec!3(1, 1, 1)));
 	speler.addAttribute(camera);
 	world.currentCamera = camera;
 
 	window.setMouseType(MouseType.CAPTURED);
 	window.keyCallbacks ~= &speler.toetsinvoer;
 	window.mousepositionCallbacks ~= &speler.muisinvoer;
-	speler.location = Vec!3([0, 0, 2]);
+	speler.location = Vec!3(0,0,2);
 
 	ShaderProgram.gltfShaderProgram.setUniform("u_useNormalTexture", cast(uint) true);
 	ShaderProgram.gltfShaderProgram.setUniform("u_useColorTexture", cast(uint) true);
@@ -42,9 +42,9 @@ void main() {
 	vdStep();
 	vdStep(); // Dont want to register initialization time
 	// log.writeln("Average FPS (60 frames): " ~ vdDeltaTime().total!"msecs".to!string);
-	vdDeltaTime().total!"usecs"
-		.to!string
-		.writeln;
+	// vdDeltaTime().total!"usecs"
+	// 	.to!string
+	// 	.writeln;
 
 	vdLoop();
 	// vdDeInit();
@@ -154,22 +154,6 @@ class Speler : Node { // TODO: add switching camera
 					renderUV = !renderUV;
 					ShaderProgram.gltfShaderProgram.setUniform("u_renderUV", cast(uint) renderUV);
 					writeln("Render UV: " ~ (renderUV ? "on" : "off"));
-					break;
-				case GLFW_KEY_RIGHT:
-					if (input.event != GLFW_RELEASE)
-						break;
-					World world = worlds[0];
-					if (cam < world.cameras.length - 1)
-						cam += 1;
-					world.currentCamera = world.cameras[cam];
-					break;
-				case GLFW_KEY_LEFT:
-					if (input.event != GLFW_RELEASE)
-						break;
-					World world = worlds[0];
-					if (cam > 0)
-						cam -= 1;
-					world.currentCamera = world.cameras[cam];
 					break;
 				default:
 			}
