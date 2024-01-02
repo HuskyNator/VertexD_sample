@@ -6,20 +6,10 @@ import vertexd;
 import bindbc.opengl;
 
 void main() {
-	File log = File("log.txt", "a");
-	debug log.write("(Debug) ");
-	log.writeln("Run @: " ~ Clock.currTime.toSimpleString);
-
 	vdInit();
 	Window window = new Window();
 
-	// StopWatch sw = StopWatch(AutoStart.yes);
-	// GltfReader lezer = new GltfReader("bestanden/werelden/Sponza/NewSponza_Main_Blender_glTF.gltf");
-	// sw.stop();
-	// sw.peek.total!"msecs".writeln;
-	// log.writeln("Gltf Setup: " ~ sw.peek.toString);
-
-	GltfReader reader = new GltfReader("bestanden/DamagedHelmet.gltf");
+	GltfReader reader = new GltfReader("resources/DamagedHelmet/DamagedHelmet.gltf");
 	World world = reader.main_world;
 	window.world = world;
 
@@ -27,38 +17,30 @@ void main() {
 	world.addNode(speler);
 
 	Camera camera = new Camera(Camera.perspectiveProjection());
-	speler.addAttribute(new Light(Light.Type.FRAGMENT, Vec!3([1, 1, 1])));
+	speler.addAttribute(new Light(Light.Type.POINT, Vec!3(1, 1, 1)));
 	speler.addAttribute(camera);
 	world.currentCamera = camera;
 
 	window.setMouseType(MouseType.CAPTURED);
 	window.keyCallbacks ~= &speler.toetsinvoer;
-	window.mousepositionCallbacks ~= &speler.muisinvoer;
-	speler.location = Vec!3([0, 0, 2]);
+	window.mousepositionCallbacks ~= &speler.mouseInput;
+	speler.location = Vec!3(0, 0, 2);
 
 	ShaderProgram.gltfShaderProgram.setUniform("u_useNormalTexture", cast(uint) true);
 	ShaderProgram.gltfShaderProgram.setUniform("u_useColorTexture", cast(uint) true);
 
-	vdStep();
-	vdStep(); // Dont want to register initialization time
-	// log.writeln("Average FPS (60 frames): " ~ vdDeltaTime().total!"msecs".to!string);
-	vdDeltaTime().total!"usecs"
-		.to!string
-		.writeln;
-
 	vdLoop();
-	// vdDeInit();
 }
 
-class Speler : Node { // TODO: add switching camera
-	private Quat xdraai;
-	private Quat ydraai;
+class Speler : Node {
+	private Quat xRot;
+	private Quat yRot;
 
-	private Vec!3 _verplaatsing;
-	private Vec!2 _draai;
-	private Vec!2 _draaiDelta;
-	precision snelheid = 3;
-	precision draaiSnelheid = 0.6;
+	private Vec!3 _displacement;
+	private Vec!2 _rotation;
+	private Vec!2 _rotationDelta;
+	precision speed = 3;
+	precision rotationSpeed = 0.6;
 
 	this(string name) {
 		super();
@@ -85,105 +67,89 @@ class Speler : Node { // TODO: add switching camera
 
 			int delta = (input.event == GLFW_PRESS) ? 1 : -1;
 			switch (input.key) {
-				case GLFW_KEY_A:
-					_verplaatsing.x -= delta;
+			case GLFW_KEY_A:
+				_displacement.x -= delta;
+				break;
+			case GLFW_KEY_D:
+				_displacement.x += delta;
+				break;
+			case GLFW_KEY_SPACE:
+				_displacement.y += delta;
+				break;
+			case GLFW_KEY_LEFT_CONTROL:
+				_displacement.y -= delta;
+				break;
+			case GLFW_KEY_S:
+				_displacement.z -= delta;
+				break;
+			case GLFW_KEY_W:
+				_displacement.z += delta;
+				break;
+			case GLFW_KEY_1:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_D:
-					_verplaatsing.x += delta;
+				if (culling)
+					glDisable(GL_CULL_FACE);
+				else
+					glEnable(GL_CULL_FACE);
+				culling = !culling;
+				writeln("Culling: " ~ (culling ? "on" : "off"));
+				break;
+			case GLFW_KEY_2:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_SPACE:
-					_verplaatsing.y += delta;
+				normalTexture = !normalTexture;
+				ShaderProgram.gltfShaderProgram.setUniform("u_useNormalTexture", cast(uint) normalTexture);
+				writeln("Normal Texture: " ~ (normalTexture ? "on" : "off"));
+				break;
+			case GLFW_KEY_3:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_LEFT_CONTROL:
-					_verplaatsing.y -= delta;
+				colorTexture = !colorTexture;
+				ShaderProgram.gltfShaderProgram.setUniform("u_useColorTexture", cast(uint) colorTexture);
+				writeln("Color Texture: " ~ (colorTexture ? "on" : "off"));
+				break;
+			case GLFW_KEY_4:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_S:
-					_verplaatsing.z -= delta;
+				renderNormals = !renderNormals;
+				ShaderProgram.gltfShaderProgram.setUniform("u_renderNormals", cast(uint) renderNormals);
+				writeln("Render Normals: " ~ (renderNormals ? "on" : "off"));
+				break;
+			case GLFW_KEY_5:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_W:
-					_verplaatsing.z += delta;
+				absNormals = !absNormals;
+				ShaderProgram.gltfShaderProgram.setUniform("u_absNormals", cast(uint) absNormals);
+				writeln("Render Absolute Normals: " ~ (absNormals ? "on" : "off"));
+				break;
+			case GLFW_KEY_6:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_1:
-					if (input.event != GLFW_PRESS)
-						break;
-					if (culling)
-						glDisable(GL_CULL_FACE);
-					else
-						glEnable(GL_CULL_FACE);
-					culling = !culling;
-					writeln("Culling: " ~ (culling ? "on" : "off"));
+				renderTangents = !renderTangents;
+				ShaderProgram.gltfShaderProgram.setUniform("u_renderTangents", cast(uint) renderTangents);
+				writeln("Render Tangents: " ~ (renderTangents ? "on" : "off"));
+				break;
+			case GLFW_KEY_7:
+				if (input.event != GLFW_PRESS)
 					break;
-				case GLFW_KEY_2:
-					if (input.event != GLFW_PRESS)
-						break;
-					normalTexture = !normalTexture;
-					ShaderProgram.gltfShaderProgram.setUniform("u_useNormalTexture", cast(uint) normalTexture);
-					writeln("Normal Texture: " ~ (normalTexture ? "on" : "off"));
-					break;
-				case GLFW_KEY_3:
-					if (input.event != GLFW_PRESS)
-						break;
-					colorTexture = !colorTexture;
-					ShaderProgram.gltfShaderProgram.setUniform("u_useColorTexture", cast(uint) colorTexture);
-					writeln("Color Texture: " ~ (colorTexture ? "on" : "off"));
-					break;
-				case GLFW_KEY_4:
-					if (input.event != GLFW_PRESS)
-						break;
-					renderNormals = !renderNormals;
-					ShaderProgram.gltfShaderProgram.setUniform("u_renderNormals", cast(uint) renderNormals);
-					writeln("Render Normals: " ~ (renderNormals ? "on" : "off"));
-					break;
-				case GLFW_KEY_5:
-					if (input.event != GLFW_PRESS)
-						break;
-					absNormals = !absNormals;
-					ShaderProgram.gltfShaderProgram.setUniform("u_absNormals", cast(uint) absNormals);
-					writeln("Render Absolute Normals: " ~ (absNormals ? "on" : "off"));
-					break;
-				case GLFW_KEY_6:
-					if (input.event != GLFW_PRESS)
-						break;
-					renderTangents = !renderTangents;
-					ShaderProgram.gltfShaderProgram.setUniform("u_renderTangents", cast(uint) renderTangents);
-					writeln("Render Tangents: " ~ (renderTangents ? "on" : "off"));
-					break;
-				case GLFW_KEY_7:
-					if (input.event != GLFW_PRESS)
-						break;
-					renderUV = !renderUV;
-					ShaderProgram.gltfShaderProgram.setUniform("u_renderUV", cast(uint) renderUV);
-					writeln("Render UV: " ~ (renderUV ? "on" : "off"));
-					break;
-				case GLFW_KEY_RIGHT:
-					if (input.event != GLFW_RELEASE)
-						break;
-					World world = worlds[0];
-					if (cam < world.cameras.length - 1)
-						cam += 1;
-					world.currentCamera = world.cameras[cam];
-					break;
-				case GLFW_KEY_LEFT:
-					if (input.event != GLFW_RELEASE)
-						break;
-					World world = worlds[0];
-					if (cam > 0)
-						cam -= 1;
-					world.currentCamera = world.cameras[cam];
-					break;
-				default:
+				renderUV = !renderUV;
+				ShaderProgram.gltfShaderProgram.setUniform("u_renderUV", cast(uint) renderUV);
+				writeln("Render UV: " ~ (renderUV ? "on" : "off"));
+				break;
+			default:
 			}
 		} catch (Exception e) {
 		}
 	}
 
-	void muisinvoer(MousepositionInput input) nothrow {
-		static double oude_x = 0;
-		static double oude_y = 0;
-		_draaiDelta.y -= input.x - oude_x;
-		_draaiDelta.x -= input.y - oude_y;
-		oude_x = input.x;
-		oude_y = input.y;
+	void mouseInput(MousepositionInput input) nothrow {
+		static double old_x = 0;
+		static double old_y = 0;
+		_rotationDelta.y -= input.x - old_x;
+		_rotationDelta.x -= input.y - old_y;
+		old_x = input.x;
+		old_y = input.y;
 	}
 
 	import std.datetime;
@@ -193,28 +159,29 @@ class Speler : Node { // TODO: add switching camera
 
 		double deltaSec = deltaT.total!"hnsecs"() / 10_000_000.0;
 
-		Vec!3 vooruit = ydraai * Vec!3([0, 0, -1]);
-		Vec!3 rechts = ydraai * Vec!3([1, 0, 0]);
+		Vec!3 forward = yRot * Vec!3([0, 0, -1]);
+		Vec!3 right = yRot * Vec!3([1, 0, 0]);
 
-		Mat!3 verplaatsMat;
-		verplaatsMat.setCol(0, rechts);
-		verplaatsMat.setCol(1, Vec!3([0, 1, 0]));
-		verplaatsMat.setCol(2, vooruit);
+		Mat!3 displaceMat;
+		displaceMat.setCol(0, right);
+		displaceMat.setCol(1, Vec!3([0, 1, 0]));
+		displaceMat.setCol(2, forward);
 
-		this.location = this.location + cast(Vec!3)(verplaatsMat ^ (_verplaatsing * cast(prec)(snelheid * deltaSec)));
+		this.location = this.location + cast(Vec!3)(
+			displaceMat ^ (_displacement * cast(prec)(speed * deltaSec)));
 
-		_draaiDelta = _draaiDelta * cast(prec)(draaiSnelheid * deltaSec);
-		_draai = _draai + _draaiDelta;
-		if (abs(_draai.x) > PI_2)
-			_draai.x = sgn(_draai.x) * PI_2;
-		if (abs(_draai.y) > PI)
-			_draai.y -= sgn(_draai.y) * 2 * PI;
+		_rotationDelta = _rotationDelta * cast(prec)(rotationSpeed * deltaSec);
+		_rotation = _rotation + _rotationDelta;
+		if (abs(_rotation.x) > PI_2)
+			_rotation.x = sgn(_rotation.x) * PI_2;
+		if (abs(_rotation.y) > PI)
+			_rotation.y -= sgn(_rotation.y) * 2 * PI;
 
-		xdraai = Quat.rotation(Vec!3([1, 0, 0]), _draai.x);
-		ydraai = Quat.rotation(Vec!3([0, 1, 0]), _draai.y);
-		this.rotation = ydraai * xdraai;
+		xRot = Quat.rotation(Vec!3([1, 0, 0]), _rotation.x);
+		yRot = Quat.rotation(Vec!3([0, 1, 0]), _rotation.y);
+		this.rotation = yRot * xRot;
 
-		_draaiDelta = Vec!2(0);
+		_rotationDelta = Vec!2(0);
 
 		super.logicStep(deltaT);
 	}
